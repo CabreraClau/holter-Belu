@@ -14,6 +14,7 @@
     <header><div><div class="eyebrow">Registro personal</div><h1>Mi día con Holter</h1><p class="sub" id="today"></p></div><span class="status">Guardado local</span></header>
     <section class="card entry-card">
       <p class="question">¿Cómo te sentís ahora?</p>
+      <p class="sub" style="margin:-8px 0 14px">Podés elegir más de una opción.</p>
       <div class="symptoms" id="symptoms"></div>
       <div class="fields" id="fields">
         <span class="label">¿Qué estás haciendo?</span><div class="levels" id="activities"></div>
@@ -29,21 +30,21 @@
     <p class="notice">Este registro solo organiza lo que sentiste durante el estudio. No realiza diagnósticos ni reemplaza las indicaciones del equipo médico. Ante síntomas intensos o una urgencia, buscá atención médica.</p>
   </main><div class="toast" id="toast">Registro guardado</div>
   <script>
-    const symptomList=['Agitada','Siento el corazón latir','Tos','Latidos irregulares'];
+    const symptomList=['Agitada','Siento el corazón latir','Tos','Latidos irregulares','Dolor en el pecho','Falta de aire'];
     const activityList=['Me estoy moviendo','Estoy quieta'];
     const levelList=['Leve','Moderada','Fuerte'];
-    let selectedSymptom='',selectedActivity='',selectedLevel='Moderada';
+    let selectedSymptoms=[],selectedActivity='',selectedLevel='Moderada';
     const key='registro-holter-v1';
     const $=id=>document.getElementById(id);
     $('today').textContent=new Intl.DateTimeFormat('es-UY',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date());
-    symptomList.forEach(name=>{const b=document.createElement('button');b.className='symptom';b.textContent=name;b.onclick=()=>{selectedSymptom=name;document.querySelectorAll('.symptom').forEach(x=>x.classList.toggle('selected',x===b));$('fields').classList.add('open')};$('symptoms').appendChild(b)});
+    symptomList.forEach(name=>{const b=document.createElement('button');b.className='symptom';b.textContent=name;b.onclick=()=>{selectedSymptoms=selectedSymptoms.includes(name)?selectedSymptoms.filter(x=>x!==name):[...selectedSymptoms,name];b.classList.toggle('selected',selectedSymptoms.includes(name));$('fields').classList.toggle('open',selectedSymptoms.length>0)};$('symptoms').appendChild(b)});
     activityList.forEach(name=>{const b=document.createElement('button');b.className='level activity';b.textContent=name;b.onclick=()=>{selectedActivity=name;document.querySelectorAll('.activity').forEach(x=>x.classList.toggle('selected',x===b))};$('activities').appendChild(b)});
-    levelList.forEach(name=>{const b=document.createElement('button');b.className='level'+(name===selectedLevel?' selected':'');b.textContent=name;b.onclick=()=>{selectedLevel=name;document.querySelectorAll('.level').forEach(x=>x.classList.toggle('selected',x===b))};$('levels').appendChild(b)});
+    levelList.forEach(name=>{const b=document.createElement('button');b.className='level intensity'+(name===selectedLevel?' selected':'');b.textContent=name;b.onclick=()=>{selectedLevel=name;document.querySelectorAll('.intensity').forEach(x=>x.classList.toggle('selected',x===b))};$('levels').appendChild(b)});
     const read=()=>JSON.parse(localStorage.getItem(key)||'[]');
     const write=items=>localStorage.setItem(key,JSON.stringify(items));
-    function render(){const items=read().sort((a,b)=>b.at-a.at);$('timeline').innerHTML='';if(!items.length){$('timeline').innerHTML='<div class="empty">Todavía no hay registros.<br>El primero aparecerá acá con su hora.</div>';return}items.forEach(item=>{const d=new Date(item.at),el=document.createElement('div');el.className='event';const activity=item.activity?escapeHtml(item.activity)+' · ':'';el.innerHTML=`<div class="time">${d.toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'})}</div><div><div class="event-title">${item.symptom}</div><div class="meta">${activity}${item.level}${item.note?' · '+escapeHtml(item.note):''}</div></div>`;$('timeline').appendChild(el)})}
+    function render(){const items=read().sort((a,b)=>b.at-a.at);$('timeline').innerHTML='';if(!items.length){$('timeline').innerHTML='<div class="empty">Todavía no hay registros.<br>El primero aparecerá acá con su hora.</div>';return}items.forEach(item=>{const d=new Date(item.at),el=document.createElement('div');el.className='event';const activity=item.activity?escapeHtml(item.activity)+' · ':'';const symptoms=(Array.isArray(item.symptoms)?item.symptoms:[item.symptom]).filter(Boolean).map(escapeHtml).join(' + ');el.innerHTML=`<div class="time">${d.toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'})}</div><div><div class="event-title">${symptoms}</div><div class="meta">${activity}${item.level}${item.note?' · '+escapeHtml(item.note):''}</div></div>`;$('timeline').appendChild(el)})}
     function escapeHtml(s){return s.replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
-    $('save').onclick=()=>{if(!selectedSymptom||!selectedActivity){$('toast').textContent='Elegí si te estás moviendo o estás quieta';$('toast').classList.add('show');setTimeout(()=>{$('toast').classList.remove('show');$('toast').textContent='Registro guardado'},2200);return}const items=read();items.push({at:Date.now(),symptom:selectedSymptom,activity:selectedActivity,level:selectedLevel,note:$('note').value.trim()});write(items);$('note').value='';selectedSymptom='';selectedActivity='';document.querySelectorAll('.symptom,.activity').forEach(x=>x.classList.remove('selected'));$('fields').classList.remove('open');render();$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),1800)};
+    $('save').onclick=()=>{if(!selectedSymptoms.length||!selectedActivity){$('toast').textContent=!selectedSymptoms.length?'Elegí al menos un síntoma':'Elegí si te estás moviendo o estás quieta';$('toast').classList.add('show');setTimeout(()=>{$('toast').classList.remove('show');$('toast').textContent='Registro guardado'},2200);return}const items=read();items.push({at:Date.now(),symptoms:[...selectedSymptoms],activity:selectedActivity,level:selectedLevel,note:$('note').value.trim()});write(items);$('note').value='';selectedSymptoms=[];selectedActivity='';document.querySelectorAll('.symptom,.activity').forEach(x=>x.classList.remove('selected'));$('fields').classList.remove('open');render();$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),1800)};
     $('undo').onclick=()=>{const items=read();if(!items.length)return;items.sort((a,b)=>a.at-b.at).pop();write(items);render()};
     $('pdf').onclick=()=>window.print();render();
   </script>
